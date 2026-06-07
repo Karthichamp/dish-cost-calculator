@@ -1,0 +1,1896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Dish Cost Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #1C1C1E;
+    --warm-white: #242426;
+    --brown-deep: #F0EDE8;
+    --brown-mid: #C8C0B4;
+    --brown-light: #9A9088;
+    --gold: #B87333;
+    --gold-light: #D4854A;
+    --gold-pale: #F2C49A;
+    --blush: #3A2E26;
+    --sage: #7A9E8A;
+    --charcoal: #0E0E0F;
+    --text-primary: #F0EDE8;
+    --text-secondary: #A89E94;
+    --text-muted: #706860;
+    --border: rgba(184,115,51,0.22);
+    --border-strong: rgba(184,115,51,0.45);
+    --glass: rgba(28,28,30,0.88);
+    --shadow-soft: 0 4px 24px rgba(0,0,0,0.35);
+    --shadow-card: 0 2px 16px rgba(0,0,0,0.45);
+    --radius: 16px;
+    --radius-sm: 10px;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--cream);
+    font-family: 'Jost', sans-serif;
+    color: var(--text-primary);
+    overflow: hidden;
+  }
+
+  #app {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    position: relative; overflow: hidden;
+  }
+
+  /* ─── BACKGROUND TEXTURE ─── */
+  .bg-texture {
+    position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 120% 80% at 50% -20%, rgba(184,115,51,0.18) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 60% at 90% 100%, rgba(212,133,74,0.12) 0%, transparent 50%),
+      radial-gradient(ellipse 80% 50% at 0% 80%, rgba(184,115,51,0.08) 0%, transparent 50%);
+  }
+  .bg-texture::after {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+    opacity: 0.4;
+  }
+
+  /* ─── SCREENS ─── */
+  .screen {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    z-index: 1;
+    background: var(--cream);
+    transform: translateX(100%);
+    transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+    box-shadow: -12px 0 40px rgba(0,0,0,0.5);
+  }
+  .screen.active { transform: translateX(0); z-index: 2; }
+  .screen.slide-back { transform: translateX(-22%); z-index: 1; }
+
+  /* ─── HOME SCREEN ─── */
+  #home-screen {
+    transform: translateX(0);
+    background: var(--cream);
+    box-shadow: none;
+    z-index: 1;
+  }
+  .home-header {
+    padding: calc(var(--safe-top) + 56px) 28px 32px;
+    position: relative;
+  }
+  .home-header::after {
+    content: '';
+    position: absolute; left: 28px; right: 28px; bottom: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  }
+  .brand-eyebrow {
+    font-family: 'Jost', sans-serif;
+    font-size: 10px; font-weight: 400;
+    letter-spacing: 0.35em; text-transform: uppercase;
+    color: var(--gold); margin-bottom: 6px;
+  }
+  .brand-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 40px; font-weight: 300; line-height: 1.1;
+    color: var(--brown-deep);
+    letter-spacing: -0.01em;
+  }
+  .brand-title span { font-style: italic; color: var(--brown-mid); }
+  .brand-subtitle {
+    margin-top: 6px;
+    font-size: 12px; font-weight: 300; letter-spacing: 0.08em;
+    color: var(--text-secondary);
+  }
+
+  .home-content {
+    flex: 1; overflow-y: auto; padding: 28px 20px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ─── MAIN TILES ─── */
+  .main-tiles {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 14px; margin-bottom: 28px;
+  }
+  .main-tile {
+    background: var(--warm-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 18px;
+    cursor: pointer;
+    position: relative; overflow: hidden;
+    box-shadow: var(--shadow-soft);
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    -webkit-user-select: none;
+    min-height: 150px;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .main-tile:active { transform: scale(0.97); box-shadow: var(--shadow-card); }
+  .main-tile::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(184,115,51,0.08) 0%, transparent 60%);
+  }
+  .tile-icon {
+    font-size: 28px; margin-bottom: 12px;
+    display: block;
+  }
+  .tile-label {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px; font-weight: 400; line-height: 1.1;
+    color: var(--brown-deep);
+  }
+  .tile-count {
+    font-size: 11px; font-weight: 400; letter-spacing: 0.06em;
+    color: var(--text-muted); margin-top: 4px;
+  }
+  .tile-accent {
+    position: absolute; bottom: 0; right: 0;
+    width: 60px; height: 60px;
+    background: radial-gradient(circle at 100% 100%, rgba(184,115,51,0.18), transparent 70%);
+  }
+
+  /* ─── PRICE CHART ─── */
+  .section-label {
+    font-family: 'Jost', sans-serif;
+    font-size: 10px; font-weight: 500; letter-spacing: 0.3em;
+    text-transform: uppercase; color: var(--gold);
+    margin-bottom: 14px; padding-left: 2px;
+  }
+  .price-chart-card {
+    background: var(--warm-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow-soft);
+    margin-bottom: 20px;
+  }
+  .chart-header {
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .chart-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 18px; font-weight: 400;
+    color: var(--brown-deep);
+  }
+  .chart-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .chart-table {
+    min-width: 100%;
+    border-collapse: collapse;
+  }
+  .chart-table th {
+    padding: 10px 14px;
+    font-size: 10px; font-weight: 500; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--text-muted);
+    background: rgba(184,115,51,0.07);
+    white-space: nowrap;
+    text-align: right;
+    border-bottom: 1px solid var(--border);
+  }
+  .chart-table th:first-child { text-align: left; }
+  .chart-table td {
+    padding: 11px 14px;
+    font-size: 13px; font-weight: 300;
+    color: var(--text-primary);
+    border-bottom: 1px solid rgba(184,115,51,0.10);
+    white-space: nowrap;
+    text-align: right;
+  }
+  .chart-table td:first-child { text-align: left; font-weight: 400; }
+  .chart-table tr:last-child td { border-bottom: none; }
+  .chart-table tr:hover td { background: rgba(184,115,51,0.06); }
+  .price-val { color: var(--brown-mid); font-weight: 400; }
+  .price-na { color: var(--text-muted); font-size: 11px; }
+
+  /* ─── HEADER BAR ─── */
+  .page-header {
+    padding: calc(var(--safe-top) + 18px) 20px 16px;
+    background: var(--glass);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 14px;
+    position: relative; z-index: 10;
+    flex-shrink: 0;
+  }
+  .btn-back {
+    width: 38px; height: 38px;
+    border: 1px solid var(--border-strong);
+    border-radius: 50%;
+    background: rgba(184,115,51,0.10);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0;
+    transition: background 0.15s;
+    color: var(--brown-mid);
+    font-size: 16px;
+  }
+  .btn-back:active { background: rgba(184,115,51,0.22); }
+  .page-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 26px; font-weight: 400;
+    color: var(--brown-deep); flex: 1;
+    letter-spacing: -0.01em;
+  }
+  .page-title em { font-style: italic; }
+  .btn-sync {
+    width: 38px; height: 38px;
+    border: 1px solid var(--border-strong);
+    border-radius: 50%;
+    background: rgba(184,115,51,0.10);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--gold); font-size: 15px;
+    transition: background 0.15s;
+  }
+  .btn-sync:active { background: rgba(184,115,51,0.22); }
+  .btn-sync.syncing { animation: spinSync 1s linear infinite; }
+  @keyframes spinSync { to { transform: rotate(360deg); } }
+
+  /* ─── LIST SCREEN CONTENT ─── */
+  .list-content {
+    flex: 1; overflow-y: auto;
+    padding: 20px 16px;
+    padding-bottom: calc(var(--safe-bottom) + 100px);
+    -webkit-overflow-scrolling: touch;
+  }
+  .items-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .item-card {
+    background: var(--warm-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px 14px;
+    cursor: pointer;
+    position: relative; overflow: hidden;
+    box-shadow: var(--shadow-soft);
+    transition: transform 0.15s ease;
+    -webkit-user-select: none;
+    min-height: 100px;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .item-card:active { transform: scale(0.97); }
+  .item-card-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 15px; font-weight: 400;
+    color: var(--brown-deep);
+    line-height: 1.25; margin-bottom: 8px;
+  }
+  .item-card-price {
+    font-size: 14px; font-weight: 500;
+    color: var(--gold);
+  }
+  .item-card-ppg {
+    font-size: 10px; font-weight: 300;
+    color: var(--text-muted); letter-spacing: 0.03em;
+    margin-top: 3px;
+  }
+  .item-card-updated {
+    font-size: 9px; color: var(--text-muted);
+    margin-top: 6px; letter-spacing: 0.04em;
+  }
+
+  /* ADD TILE */
+  .add-card {
+    background: transparent;
+    border: 1.5px dashed var(--border-strong);
+    border-radius: var(--radius-sm);
+    min-height: 100px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    cursor: pointer; gap: 6px;
+    transition: background 0.15s, border-color 0.15s;
+    -webkit-user-select: none;
+  }
+  .add-card:active { background: rgba(184,115,51,0.08); }
+  .add-icon {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: rgba(184,115,51,0.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; color: var(--gold);
+  }
+  .add-label {
+    font-size: 11px; font-weight: 400;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* ─── MODAL / SHEET ─── */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(0,0,0,0.65);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex; align-items: flex-end;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal-sheet {
+    width: 100%; max-height: 90vh;
+    background: #1E1E20;
+    border-top: 1px solid var(--border-strong);
+    border-radius: 24px 24px 0 0;
+    padding: 0;
+    transform: translateY(100%);
+    transition: transform 0.38s cubic-bezier(0.32, 0, 0.2, 1);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 -8px 40px rgba(0,0,0,0.6);
+  }
+  .modal-overlay.open .modal-sheet { transform: translateY(0); }
+  .modal-handle {
+    width: 36px; height: 4px;
+    background: rgba(184,115,51,0.35);
+    border-radius: 2px;
+    margin: 14px auto 0;
+    flex-shrink: 0;
+  }
+  .modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .modal-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px; font-weight: 400;
+    color: var(--brown-deep);
+  }
+  .modal-title em { font-style: italic; }
+  .modal-close {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.06);
+    border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: var(--text-secondary);
+    transition: background 0.15s;
+  }
+  .modal-close:active { background: rgba(255,255,255,0.08); }
+  .modal-body {
+    flex: 1; overflow-y: auto;
+    padding: 20px 20px;
+    padding-bottom: calc(var(--safe-bottom) + 20px);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ─── FORM ELEMENTS ─── */
+  .form-group { margin-bottom: 18px; }
+  .form-label {
+    display: block;
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.25em; text-transform: uppercase;
+    color: var(--gold); margin-bottom: 7px;
+  }
+  .form-input, .form-select {
+    width: 100%;
+    padding: 13px 16px;
+    background: rgba(30,30,32,0.7);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    font-family: 'Jost', sans-serif;
+    font-size: 15px; font-weight: 300;
+    color: var(--text-primary);
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .form-input:focus, .form-select:focus {
+    border-color: var(--gold);
+    background: rgba(36,36,38,0.95);
+  }
+  .form-input::placeholder { color: var(--text-muted); }
+  .select-wrapper {
+    position: relative;
+  }
+  .select-wrapper::after {
+    content: '▾';
+    position: absolute; right: 14px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--gold); pointer-events: none; font-size: 13px;
+  }
+  .form-select { padding-right: 36px; }
+  .form-row { display: flex; gap: 10px; }
+  .form-row .form-group { flex: 1; }
+  .form-hint {
+    font-size: 11px; color: var(--text-muted);
+    margin-top: 5px; letter-spacing: 0.03em;
+  }
+  .ppg-display {
+    padding: 10px 16px;
+    background: rgba(184,115,51,0.10);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 13px; color: var(--brown-mid);
+    font-style: italic;
+    margin-top: -10px;
+    margin-bottom: 18px;
+  }
+
+  /* ─── BUTTONS ─── */
+  .btn-primary {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, var(--gold), #8B4E1A);
+    color: #F2E4D0;
+    border: none; border-radius: var(--radius-sm);
+    font-family: 'Jost', sans-serif;
+    font-size: 13px; font-weight: 500;
+    letter-spacing: 0.15em; text-transform: uppercase;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    margin-bottom: 12px;
+  }
+  .btn-primary:active { opacity: 0.85; }
+  .btn-secondary {
+    width: 100%;
+    padding: 13px;
+    background: transparent;
+    color: var(--brown-mid);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    font-family: 'Jost', sans-serif;
+    font-size: 13px; font-weight: 400;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    cursor: pointer; margin-bottom: 10px;
+    transition: background 0.15s;
+  }
+  .btn-secondary:active { background: rgba(184,115,51,0.10); }
+  .btn-danger {
+    width: 100%;
+    padding: 13px;
+    background: transparent;
+    color: #E05A3A;
+    border: 1px solid rgba(210,70,50,0.35);
+    border-radius: var(--radius-sm);
+    font-family: 'Jost', sans-serif;
+    font-size: 13px; font-weight: 400;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-danger:active { background: rgba(210,70,50,0.10); }
+
+  /* ─── DETAIL VIEW ─── */
+  .detail-section {
+    background: rgba(30,30,32,0.6);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px; margin-bottom: 16px;
+  }
+  .detail-row {
+    display: flex; justify-content: space-between;
+    align-items: baseline; padding: 6px 0;
+    border-bottom: 1px solid rgba(184,115,51,0.10);
+  }
+  .detail-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .detail-key {
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .detail-val {
+    font-size: 14px; font-weight: 300;
+    color: var(--text-primary); text-align: right;
+  }
+  .detail-val.gold { color: var(--gold); font-weight: 500; }
+  .detail-updated {
+    font-size: 10px; color: var(--text-muted);
+    letter-spacing: 0.04em; text-align: right;
+    margin-bottom: 16px; font-style: italic;
+  }
+
+  /* ─── INGREDIENTS ─── */
+  .ingredient-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 14px;
+    background: rgba(30,30,32,0.6);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+  }
+  .ingredient-info { flex: 1; }
+  .ingredient-name {
+    font-size: 13px; font-weight: 400;
+    color: var(--brown-deep);
+  }
+  .ingredient-qty {
+    font-size: 11px; color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .ingredient-cost {
+    font-size: 13px; font-weight: 400;
+    color: var(--gold); white-space: nowrap;
+  }
+  .ingredient-del {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: rgba(210,70,50,0.12);
+    border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: #E05A3A;
+    flex-shrink: 0;
+  }
+  .add-ingredient-form {
+    background: rgba(184,115,51,0.07);
+    border: 1.5px dashed var(--border-strong);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    margin-top: 10px;
+  }
+  .total-cost-bar {
+    background: rgba(184,115,51,0.08);
+    border: 1px solid var(--border-strong);
+    border-left: 3px solid var(--gold);
+    border-radius: var(--radius-sm);
+    padding: 14px 18px;
+    display: flex; align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .total-cost-bar::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(184,115,51,0.12) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .total-label {
+    font-size: 10px; font-weight: 500; letter-spacing: 0.25em;
+    text-transform: uppercase; color: var(--gold); opacity: 0.85;
+  }
+  .total-val {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 26px; font-weight: 400;
+    color: var(--gold-light);
+    letter-spacing: -0.01em;
+  }
+  .total-val span { font-size: 12px; opacity: 0.55; margin-left: 5px; font-family: 'Jost', sans-serif; font-weight: 300; }
+
+  /* ─── SYNC MODAL ─── */
+  .sync-option {
+    display: flex; align-items: center; gap: 14px;
+    padding: 16px;
+    background: rgba(30,30,32,0.6);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .sync-option:active { background: rgba(184,115,51,0.12); }
+  .sync-icon-box {
+    width: 42px; height: 42px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0;
+  }
+  .sync-option-text .title {
+    font-size: 15px; font-weight: 400;
+    color: var(--brown-deep);
+  }
+  .sync-option-text .desc {
+    font-size: 11px; color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .sync-status {
+    font-size: 12px; padding: 12px;
+    text-align: center; border-radius: var(--radius-sm);
+    margin-top: 12px;
+  }
+  .sync-status.success { background: rgba(122,158,138,0.15); color: var(--sage); }
+  .sync-status.error { background: rgba(210,70,50,0.12); color: #E05A3A; }
+  .sync-status.info { background: rgba(184,115,51,0.12); color: var(--gold); }
+
+  /* ─── TOAST ─── */
+  .toast {
+    position: fixed; bottom: calc(var(--safe-bottom) + 24px);
+    left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--brown-deep);
+    color: var(--gold-pale);
+    padding: 12px 22px;
+    border-radius: 24px;
+    font-size: 13px; font-weight: 300;
+    letter-spacing: 0.05em;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.55);
+    z-index: 200;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ─── HOME SYNC BTN ─── */
+  .home-sync-row {
+    display: flex; justify-content: flex-end;
+    padding: 0 20px 0 20px;
+    margin-top: -10px; margin-bottom: 18px;
+  }
+  .home-sync-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 14px;
+    border: 1px solid var(--border-strong);
+    border-radius: 20px;
+    background: rgba(184,115,51,0.10);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .home-sync-btn:active { background: rgba(184,115,51,0.22); }
+  .home-sync-btn span {
+    font-size: 11px; font-weight: 400;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--brown-mid);
+  }
+  .home-sync-btn .icon { font-size: 13px; color: var(--gold); }
+
+  /* ─── RECIPE QUANTITY BADGE ─── */
+  .recipe-qty-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    background: rgba(184,115,51,0.12);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 10px; color: var(--gold);
+    letter-spacing: 0.05em;
+    margin-top: 4px;
+  }
+  .empty-state {
+    text-align: center; padding: 40px 20px;
+    grid-column: 1/-1;
+  }
+  .empty-state-icon { font-size: 36px; opacity: 0.3; margin-bottom: 10px; }
+  .empty-state-text {
+    font-size: 13px; color: var(--text-muted);
+    font-style: italic;
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(184,115,51,0.4); border-radius: 3px; }
+
+  /* divider */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border-strong), transparent);
+    margin: 16px 0;
+  }
+
+  /* ─── ORNAMENT ─── */
+  .ornament {
+    text-align: center;
+    font-size: 12px; color: var(--gold); opacity: 0.5;
+    letter-spacing: 0.4em; margin: 8px 0 16px;
+  }
+
+
+  #items-screen,
+  #recipes-screen {
+    background: var(--cream);
+  }
+  #items-screen .list-content,
+  #recipes-screen .list-content {
+    background: var(--cream);
+  }
+  /* Subtle copper top edge on inner screen headers for depth */
+  #items-screen .page-header,
+  #recipes-screen .page-header {
+    background: #1E1E20;
+    border-bottom: 1px solid var(--border-strong);
+  }
+
+  /* ─── GDRIVE ACTION BUTTONS ─── */
+  .gdrive-action-btn {
+    background: rgba(30,30,32,0.8);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    padding: 18px 14px;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.15s, border-color 0.15s, transform 0.12s;
+    -webkit-user-select: none;
+    position: relative; overflow: hidden;
+  }
+  .gdrive-action-btn::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(184,115,51,0.08), transparent);
+    pointer-events: none;
+  }
+  .gdrive-action-btn:active {
+    transform: scale(0.97);
+    background: rgba(184,115,51,0.12);
+    border-color: var(--gold);
+  }
+  .gdrive-action-btn.loading {
+    opacity: 0.6; pointer-events: none;
+  }
+  .gdrive-action-btn.success {
+    border-color: var(--sage);
+    background: rgba(122,158,138,0.1);
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="bg-texture"></div>
+
+  <!-- ══════════════ HOME SCREEN ══════════════ -->
+  <div id="home-screen" class="screen active">
+    <div class="home-header">
+      <div class="brand-eyebrow">Dish Cost Calculator</div>
+      <div class="brand-title">Baker's<br><span>One Stop Solution</span></div>
+      <div class="brand-subtitle">Craft · Cost · Create</div>
+    </div>
+
+    <div class="home-content">
+      <div class="home-sync-row">
+        <div class="home-sync-btn" onclick="openSyncModal()">
+          <span class="icon">⟳</span>
+          <span>Sync</span>
+        </div>
+      </div>
+
+      <div class="main-tiles">
+        <div class="main-tile" onclick="goTo('items-screen')">
+          <div>
+            <span class="tile-icon">🧈</span>
+            <div class="tile-label">Ingredients</div>
+            <div class="tile-count" id="items-count">— items</div>
+          </div>
+          <div class="tile-accent"></div>
+        </div>
+        <div class="main-tile" onclick="goTo('recipes-screen')">
+          <div>
+            <span class="tile-icon">🥐</span>
+            <div class="tile-label">Recipes</div>
+            <div class="tile-count" id="recipes-count">— recipes</div>
+          </div>
+          <div class="tile-accent"></div>
+        </div>
+      </div>
+
+      <div class="section-label">Price Chart · All Recipes</div>
+      <div class="price-chart-card">
+        <div class="chart-header">
+          <div class="chart-title">Cost by Quantity</div>
+        </div>
+        <div class="chart-scroll">
+          <table class="chart-table" id="price-chart-table">
+            <thead>
+              <tr>
+                <th>Recipe</th>
+                <th>300g</th>
+                <th>500g</th>
+                <th>750g</th>
+                <th>1kg</th>
+                <th>Count</th>
+              </tr>
+            </thead>
+            <tbody id="price-chart-body">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="ornament">✦ &nbsp; ✦ &nbsp; ✦</div>
+    </div>
+  </div>
+
+  <!-- ══════════════ ITEMS SCREEN ══════════════ -->
+  <div id="items-screen" class="screen">
+    <div class="page-header">
+      <div class="btn-back" onclick="goBack()">←</div>
+      <div class="page-title"><em>Ingredients</em></div>
+      <div class="btn-sync" onclick="openSyncModal()">⟳</div>
+    </div>
+    <div class="list-content">
+      <div class="items-grid" id="items-grid"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ RECIPES SCREEN ══════════════ -->
+  <div id="recipes-screen" class="screen">
+    <div class="page-header">
+      <div class="btn-back" onclick="goBack()">←</div>
+      <div class="page-title"><em>Recipes</em></div>
+      <div class="btn-sync" onclick="openSyncModal()">⟳</div>
+    </div>
+    <div class="list-content">
+      <div class="items-grid" id="recipes-grid"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ MODALS ══════════════ -->
+
+  <!-- Item Add/Edit Modal -->
+  <div class="modal-overlay" id="item-modal">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <div class="modal-title" id="item-modal-title">New <em>Ingredient</em></div>
+        <button class="modal-close" onclick="closeModal('item-modal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Item Name</label>
+          <input class="form-input" id="item-name" type="text" placeholder="e.g. Dark Chocolate 70%">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Price (₹)</label>
+            <input class="form-input" id="item-price" type="number" placeholder="0.00" step="0.01" inputmode="decimal" oninput="calcPPG()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Quantity</label>
+            <input class="form-input" id="item-qty" type="number" placeholder="e.g. 500" inputmode="decimal" oninput="calcPPG()">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Unit</label>
+          <div class="select-wrapper">
+            <select class="form-select" id="item-unit" onchange="calcPPG()">
+              <option value="g">Gram (g)</option>
+              <option value="kg">Kilogram (kg)</option>
+              <option value="ml">Millilitre (ml)</option>
+              <option value="l">Litre (l)</option>
+              <option value="count">Count (pcs)</option>
+            </select>
+          </div>
+        </div>
+        <div class="ppg-display" id="ppg-display">Price per gram: —</div>
+        <button class="btn-primary" onclick="saveItem()">Save Ingredient</button>
+        <button class="btn-secondary" id="item-edit-cancel" onclick="closeModal('item-modal')" style="display:none">Cancel</button>
+        <button class="btn-danger" id="item-delete-btn" style="display:none" onclick="deleteCurrentItem()">Delete Ingredient</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Item View Modal -->
+  <div class="modal-overlay" id="item-view-modal">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <div class="modal-title" id="item-view-title">Ingredient</div>
+        <button class="modal-close" onclick="closeModal('item-view-modal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="detail-updated" id="item-view-updated"></div>
+        <div class="detail-section" id="item-view-details"></div>
+        <button class="btn-primary" onclick="editCurrentItem()">Edit</button>
+        <button class="btn-danger" onclick="deleteCurrentItemFromView()">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recipe Add/Edit Modal -->
+  <div class="modal-overlay" id="recipe-modal">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <div class="modal-title" id="recipe-modal-title">New <em>Recipe</em></div>
+        <button class="modal-close" onclick="closeModal('recipe-modal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Recipe Name</label>
+          <input class="form-input" id="recipe-name" type="text" placeholder="e.g. Classic Brownie">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Makes</label>
+            <input class="form-input" id="recipe-qty" type="number" placeholder="e.g. 500" inputmode="decimal">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Unit</label>
+            <div class="select-wrapper">
+              <select class="form-select" id="recipe-unit">
+                <option value="g">g</option>
+                <option value="kg">kg</option>
+                <option value="ml">ml</option>
+                <option value="l">l</option>
+                <option value="count">pcs</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="section-label">Ingredients</div>
+
+        <div class="total-cost-bar">
+          <div class="total-label">Total Cost</div>
+          <div class="total-val" id="recipe-total-cost">₹0.00<span>est.</span></div>
+        </div>
+
+        <div id="recipe-ingredients-list"></div>
+
+        <div class="add-ingredient-form" id="add-ingredient-form">
+          <div class="form-group">
+            <label class="form-label">Add Ingredient</label>
+            <div class="select-wrapper">
+              <select class="form-select" id="ing-item-select">
+                <option value="">— select ingredient —</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Quantity</label>
+              <input class="form-input" id="ing-qty" type="number" placeholder="e.g. 200" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Unit</label>
+              <div class="select-wrapper">
+                <select class="form-select" id="ing-unit">
+                  <option value="g">g</option>
+                  <option value="kg">kg</option>
+                  <option value="ml">ml</option>
+                  <option value="l">l</option>
+                  <option value="count">pcs</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <button class="btn-secondary" style="margin:0" onclick="addIngredientToRecipe()">+ Add</button>
+        </div>
+
+        <div class="divider"></div>
+        <button class="btn-primary" onclick="saveRecipe()">Save Recipe</button>
+        <button class="btn-secondary" id="recipe-edit-cancel" onclick="closeModal('recipe-modal')" style="display:none">Cancel</button>
+        <button class="btn-danger" id="recipe-delete-btn" style="display:none" onclick="deleteCurrentRecipe()">Delete Recipe</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recipe View Modal -->
+  <div class="modal-overlay" id="recipe-view-modal">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <div class="modal-title" id="recipe-view-title">Recipe</div>
+        <button class="modal-close" onclick="closeModal('recipe-view-modal')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="detail-updated" id="recipe-view-updated"></div>
+        <div class="detail-section" id="recipe-view-details"></div>
+        <div class="section-label" style="margin-top:8px">Ingredients</div>
+        <div id="recipe-view-ingredients"></div>
+        <div class="total-cost-bar" style="margin-top:12px;margin-bottom:20px">
+          <div class="total-label">Total Cost</div>
+          <div class="total-val" id="recipe-view-cost">₹0.00</div>
+        </div>
+        <button class="btn-primary" onclick="editCurrentRecipe()">Edit</button>
+        <button class="btn-danger" onclick="deleteCurrentRecipeFromView()">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sync Modal -->
+  <div class="modal-overlay" id="sync-modal">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <div class="modal-title">Data <em>Sync</em></div>
+        <button class="modal-close" onclick="closeModal('sync-modal')">✕</button>
+      </div>
+      <div class="modal-body">
+
+        <!-- SETUP PANEL -->
+        <div id="gdrive-setup-panel">
+          <div class="form-group">
+            <label class="form-label">Google OAuth Client ID</label>
+            <input class="form-input" id="gdrive-client-id-input" type="text" placeholder="xxxxxxxxxx.apps.googleusercontent.com" style="font-size:12px">
+          </div>
+          <button class="btn-primary" onclick="saveClientId()" style="margin-bottom:12px">Save &amp; Connect →</button>
+          <div class="divider"></div>
+          <div style="font-size:10px;font-weight:500;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px">Manual backup</div>
+        </div>
+
+        <!-- SIGN-IN PANEL -->
+        <div id="gdrive-signin-panel" style="display:none">
+          <div style="text-align:center;padding:16px 0 20px">
+            <div style="font-size:42px;margin-bottom:12px">☁️</div>
+            <div style="font-size:15px;font-weight:500;color:var(--text-primary);margin-bottom:6px">Google Drive Ready</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:22px;line-height:1.6">Sign in to push &amp; pull your bakery<br>data between iPhone and iPad</div>
+            <button class="btn-primary" onclick="gdriveSignIn()" style="max-width:220px;margin:0 auto 10px;display:block">
+              Sign in with Google
+            </button>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:10px;cursor:pointer;text-decoration:underline" onclick="resetClientId()">Use a different Client ID</div>
+          </div>
+          <div class="divider"></div>
+          <div style="font-size:10px;font-weight:500;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px">Manual backup</div>
+        </div>
+
+        <!-- CONNECTED PANEL -->
+        <div id="gdrive-connected-panel" style="display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:rgba(66,133,244,0.07);border:1px solid rgba(66,133,244,0.2);border-radius:var(--radius-sm);margin-bottom:16px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="width:34px;height:34px;border-radius:50%;background:rgba(66,133,244,0.2);display:flex;align-items:center;justify-content:center;font-size:16px">👤</div>
+              <div>
+                <div style="font-size:13px;font-weight:500;color:var(--text-primary)" id="gdrive-user-name">Connected</div>
+                <div style="font-size:11px;color:rgba(66,133,244,0.9)" id="gdrive-user-email"></div>
+              </div>
+            </div>
+            <button onclick="gdriveSignOut()" style="font-size:11px;color:var(--text-muted);background:transparent;border:1px solid var(--border);border-radius:20px;padding:5px 12px;cursor:pointer">Sign out</button>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+            <button class="gdrive-action-btn" id="btn-push" onclick="gdrivePush()">
+              <div style="font-size:26px;margin-bottom:8px">☁️</div>
+              <div style="font-size:14px;font-weight:500;color:var(--gold-light)">Push ↑</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.4">Save to<br>Drive</div>
+            </button>
+            <button class="gdrive-action-btn" id="btn-pull" onclick="gdrivePull()">
+              <div style="font-size:26px;margin-bottom:8px">📂</div>
+              <div style="font-size:14px;font-weight:500;color:var(--gold-light)">Pull ↓</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.4">Load from<br>Drive</div>
+            </button>
+          </div>
+
+          <div id="gdrive-last-sync" style="font-size:11px;color:var(--text-muted);text-align:center;margin-bottom:14px;font-style:italic;min-height:16px"></div>
+          <div class="divider"></div>
+          <div style="font-size:10px;font-weight:500;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px">Manual backup</div>
+        </div>
+
+        <!-- ALWAYS VISIBLE: manual export/import -->
+        <div class="sync-option" onclick="syncAction('export')">
+          <div class="sync-icon-box" style="background:rgba(184,115,51,0.12)">📤</div>
+          <div class="sync-option-text">
+            <div class="title">Export JSON</div>
+            <div class="desc">Download bakery-data.json to device</div>
+          </div>
+        </div>
+        <div class="sync-option" onclick="syncAction('import')">
+          <div class="sync-icon-box" style="background:rgba(122,158,138,0.12)">📥</div>
+          <div class="sync-option-text">
+            <div class="title">Import JSON</div>
+            <div class="desc">Load a bakery-data.json from device</div>
+          </div>
+        </div>
+
+        <div id="sync-status-msg" class="sync-status" style="display:none"></div>
+        <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="importFromFile(event)">
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+// DATA LAYER — localStorage (behaves like json file on same origin)
+// ═══════════════════════════════════════════════
+const STORAGE_KEY = 'atelier_bakery_data';
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return { items: [], recipes: [] };
+}
+
+function saveData(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+let db = loadData();
+
+// ═══════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════
+let screenStack = ['home-screen'];
+
+function goTo(screenId) {
+  const current = screenStack[screenStack.length - 1];
+  const currentEl = document.getElementById(current);
+  const nextEl = document.getElementById(screenId);
+  currentEl.classList.add('slide-back');
+  nextEl.classList.add('active');
+  screenStack.push(screenId);
+  if (screenId === 'items-screen') renderItemsGrid();
+  if (screenId === 'recipes-screen') renderRecipesGrid();
+}
+
+function goBack() {
+  if (screenStack.length <= 1) return;
+  const current = screenStack.pop();
+  const prev = screenStack[screenStack.length - 1];
+  document.getElementById(current).classList.remove('active');
+  document.getElementById(prev).classList.remove('slide-back');
+  refreshHome();
+}
+
+// ═══════════════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════════════
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => {
+    if (e.target === el) closeModal(el.id);
+  });
+});
+
+// ═══════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ═══════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'}) +
+    ' ' + d.toLocaleTimeString('en-IN', {hour:'2-digit',minute:'2-digit'});
+}
+function fmtPrice(n) { return '₹' + (parseFloat(n)||0).toFixed(2); }
+
+// Convert any qty+unit to grams (or equivalent base unit for cost calc)
+function toGrams(qty, unit) {
+  const q = parseFloat(qty) || 0;
+  switch(unit) {
+    case 'kg': return q * 1000;
+    case 'l':  return q * 1000;
+    case 'ml': return q;
+    case 'g':  return q;
+    case 'count': return q;
+    default: return q;
+  }
+}
+
+function calcItemPPG(price, qty, unit) {
+  const p = parseFloat(price) || 0;
+  const q = parseFloat(qty) || 0;
+  if (!q) return null;
+  if (unit === 'count') return p / q; // per piece
+  const grams = toGrams(q, unit);
+  if (!grams) return null;
+  return p / grams;
+}
+
+// Cost of using X unit of item
+function ingredientCost(item, qty, unit) {
+  if (!item) return 0;
+  const ppg = calcItemPPG(item.price, item.qty, item.unit);
+  if (ppg === null) return 0;
+  const usedBase = toGrams(qty, unit);
+  return ppg * usedBase;
+}
+
+function recalcRecipeCost(recipe) {
+  let total = 0;
+  (recipe.ingredients || []).forEach(ing => {
+    const item = db.items.find(i => i.id === ing.itemId);
+    if (item) total += ingredientCost(item, ing.qty, ing.unit);
+  });
+  return total;
+}
+
+// ═══════════════════════════════════════════════
+// HOME
+// ═══════════════════════════════════════════════
+function refreshHome() {
+  document.getElementById('items-count').textContent = db.items.length + ' items';
+  document.getElementById('recipes-count').textContent = db.recipes.length + ' recipes';
+  renderPriceChart();
+}
+
+function renderPriceChart() {
+  const denoms = [
+    { label:'300g', val:300, unit:'g' },
+    { label:'500g', val:500, unit:'g' },
+    { label:'750g', val:750, unit:'g' },
+    { label:'1kg',  val:1000, unit:'g' },
+    { label:'Count', val:null, unit:'count' }
+  ];
+  const tbody = document.getElementById('price-chart-body');
+  if (!db.recipes.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);font-size:12px;padding:20px;font-style:italic">No recipes yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = db.recipes.map(r => {
+    const baseCost = recalcRecipeCost(r);
+    const baseGrams = toGrams(r.qty, r.unit);
+    const costPerGram = baseGrams ? baseCost / baseGrams : null;
+    const cells = denoms.map(d => {
+      if (d.unit === 'count') {
+        // cost per 1 piece if recipe is in count
+        if (r.unit === 'count') {
+          const perPiece = baseCost / (parseFloat(r.qty)||1);
+          return `<td class="price-val">${fmtPrice(perPiece)}</td>`;
+        }
+        return `<td class="price-na">—</td>`;
+      }
+      if (!costPerGram) return `<td class="price-na">—</td>`;
+      return `<td class="price-val">${fmtPrice(costPerGram * d.val)}</td>`;
+    }).join('');
+    return `<tr><td><b style="font-weight:400">${r.name}</b></td>${cells}</tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════
+// ITEMS
+// ═══════════════════════════════════════════════
+function renderItemsGrid() {
+  const grid = document.getElementById('items-grid');
+  let html = '';
+  if (!db.items.length) {
+    html += `<div class="empty-state"><div class="empty-state-icon">🧈</div><div class="empty-state-text">No ingredients yet.<br>Add your first one.</div></div>`;
+  } else {
+    db.items.forEach(item => {
+      const ppg = calcItemPPG(item.price, item.qty, item.unit);
+      const ppgLabel = ppg !== null
+        ? (item.unit === 'count' ? `₹${ppg.toFixed(2)}/pc` : `₹${ppg.toFixed(4)}/g`)
+        : '';
+      html += `<div class="item-card" onclick="viewItem('${item.id}')">
+        <div>
+          <div class="item-card-name">${item.name}</div>
+          <div class="item-card-price">${fmtPrice(item.price)}</div>
+          <div class="item-card-ppg">${item.qty}${item.unit} · ${ppgLabel}</div>
+        </div>
+        <div class="item-card-updated">${fmtDate(item.updatedAt)}</div>
+      </div>`;
+    });
+  }
+  html += `<div class="add-card" onclick="openAddItem()">
+    <div class="add-icon">+</div>
+    <div class="add-label">Add Item</div>
+  </div>`;
+  grid.innerHTML = html;
+}
+
+let editingItemId = null;
+
+function openAddItem() {
+  editingItemId = null;
+  document.getElementById('item-modal-title').innerHTML = 'New <em>Ingredient</em>';
+  document.getElementById('item-name').value = '';
+  document.getElementById('item-price').value = '';
+  document.getElementById('item-qty').value = '';
+  document.getElementById('item-unit').value = 'g';
+  document.getElementById('ppg-display').textContent = 'Price per gram: —';
+  document.getElementById('item-delete-btn').style.display = 'none';
+  document.getElementById('item-edit-cancel').style.display = 'none';
+  openModal('item-modal');
+}
+
+function viewItem(id) {
+  const item = db.items.find(i => i.id === id);
+  if (!item) return;
+  editingItemId = id;
+  document.getElementById('item-view-title').textContent = item.name;
+  document.getElementById('item-view-updated').textContent = 'Last updated: ' + fmtDate(item.updatedAt);
+  const ppg = calcItemPPG(item.price, item.qty, item.unit);
+  const ppgStr = ppg !== null ? (item.unit === 'count' ? `₹${ppg.toFixed(2)} per piece` : `₹${ppg.toFixed(4)} per gram`) : '—';
+  document.getElementById('item-view-details').innerHTML = `
+    <div class="detail-row"><span class="detail-key">Name</span><span class="detail-val">${item.name}</span></div>
+    <div class="detail-row"><span class="detail-key">Price</span><span class="detail-val gold">${fmtPrice(item.price)}</span></div>
+    <div class="detail-row"><span class="detail-key">Quantity</span><span class="detail-val">${item.qty} ${item.unit}</span></div>
+    <div class="detail-row"><span class="detail-key">Per Unit</span><span class="detail-val">${ppgStr}</span></div>
+  `;
+  openModal('item-view-modal');
+}
+
+function editCurrentItem() {
+  const item = db.items.find(i => i.id === editingItemId);
+  if (!item) return;
+  closeModal('item-view-modal');
+  document.getElementById('item-modal-title').innerHTML = 'Edit <em>Ingredient</em>';
+  document.getElementById('item-name').value = item.name;
+  document.getElementById('item-price').value = item.price;
+  document.getElementById('item-qty').value = item.qty;
+  document.getElementById('item-unit').value = item.unit;
+  document.getElementById('item-delete-btn').style.display = '';
+  document.getElementById('item-edit-cancel').style.display = '';
+  calcPPG();
+  openModal('item-modal');
+}
+
+function calcPPG() {
+  const price = document.getElementById('item-price').value;
+  const qty = document.getElementById('item-qty').value;
+  const unit = document.getElementById('item-unit').value;
+  const ppg = calcItemPPG(price, qty, unit);
+  const el = document.getElementById('ppg-display');
+  if (ppg !== null) {
+    el.textContent = unit === 'count' ? `₹${ppg.toFixed(2)} per piece` : `₹${ppg.toFixed(4)} per gram`;
+  } else {
+    el.textContent = 'Price per gram: —';
+  }
+}
+
+function saveItem() {
+  const name = document.getElementById('item-name').value.trim();
+  const price = parseFloat(document.getElementById('item-price').value);
+  const qty = parseFloat(document.getElementById('item-qty').value);
+  const unit = document.getElementById('item-unit').value;
+  if (!name || isNaN(price) || isNaN(qty) || !qty) {
+    showToast('Please fill all fields'); return;
+  }
+  if (editingItemId) {
+    const item = db.items.find(i => i.id === editingItemId);
+    item.name = name; item.price = price; item.qty = qty; item.unit = unit;
+    item.updatedAt = new Date().toISOString();
+  } else {
+    db.items.push({ id: uid(), name, price, qty, unit, updatedAt: new Date().toISOString() });
+  }
+  saveData(db);
+  closeModal('item-modal');
+  renderItemsGrid();
+  refreshHome();
+  showToast(editingItemId ? 'Ingredient updated' : 'Ingredient added ✓');
+  editingItemId = null;
+}
+
+function deleteCurrentItem() {
+  if (!editingItemId) return;
+  if (!confirm('Delete this ingredient?')) return;
+  db.items = db.items.filter(i => i.id !== editingItemId);
+  db.recipes.forEach(r => {
+    r.ingredients = (r.ingredients||[]).filter(ing => ing.itemId !== editingItemId);
+  });
+  saveData(db);
+  closeModal('item-modal');
+  renderItemsGrid();
+  refreshHome();
+  showToast('Ingredient deleted');
+  editingItemId = null;
+}
+
+function deleteCurrentItemFromView() {
+  if (!editingItemId) return;
+  if (!confirm('Delete this ingredient?')) return;
+  db.items = db.items.filter(i => i.id !== editingItemId);
+  db.recipes.forEach(r => {
+    r.ingredients = (r.ingredients||[]).filter(ing => ing.itemId !== editingItemId);
+  });
+  saveData(db);
+  closeModal('item-view-modal');
+  renderItemsGrid();
+  refreshHome();
+  showToast('Ingredient deleted');
+  editingItemId = null;
+}
+
+// ═══════════════════════════════════════════════
+// RECIPES
+// ═══════════════════════════════════════════════
+function renderRecipesGrid() {
+  const grid = document.getElementById('recipes-grid');
+  let html = '';
+  if (!db.recipes.length) {
+    html += `<div class="empty-state"><div class="empty-state-icon">🥐</div><div class="empty-state-text">No recipes yet.<br>Create your first one.</div></div>`;
+  } else {
+    db.recipes.forEach(r => {
+      const cost = recalcRecipeCost(r);
+      const ingCount = (r.ingredients||[]).length;
+      html += `<div class="item-card" onclick="viewRecipe('${r.id}')">
+        <div>
+          <div class="item-card-name">${r.name}</div>
+          <div class="item-card-price">${fmtPrice(cost)}</div>
+          <div class="item-card-ppg">${ingCount} ingredient${ingCount!==1?'s':''}</div>
+          <div class="recipe-qty-badge">${r.qty} ${r.unit}</div>
+        </div>
+        <div class="item-card-updated">${fmtDate(r.updatedAt)}</div>
+      </div>`;
+    });
+  }
+  html += `<div class="add-card" onclick="openAddRecipe()">
+    <div class="add-icon">+</div>
+    <div class="add-label">Add Recipe</div>
+  </div>`;
+  grid.innerHTML = html;
+}
+
+let editingRecipeId = null;
+let tempIngredients = [];
+
+function openAddRecipe() {
+  editingRecipeId = null;
+  tempIngredients = [];
+  document.getElementById('recipe-modal-title').innerHTML = 'New <em>Recipe</em>';
+  document.getElementById('recipe-name').value = '';
+  document.getElementById('recipe-qty').value = '';
+  document.getElementById('recipe-unit').value = 'g';
+  document.getElementById('recipe-delete-btn').style.display = 'none';
+  document.getElementById('recipe-edit-cancel').style.display = 'none';
+  populateIngredientDropdown();
+  renderTempIngredients();
+  openModal('recipe-modal');
+}
+
+function populateIngredientDropdown() {
+  const sel = document.getElementById('ing-item-select');
+  sel.innerHTML = '<option value="">— select ingredient —</option>';
+  db.items.forEach(item => {
+    sel.innerHTML += `<option value="${item.id}">${item.name} (${item.qty}${item.unit} · ₹${item.price})</option>`;
+  });
+}
+
+function addIngredientToRecipe() {
+  const itemId = document.getElementById('ing-item-select').value;
+  const qty = parseFloat(document.getElementById('ing-qty').value);
+  const unit = document.getElementById('ing-unit').value;
+  if (!itemId || !qty) { showToast('Select ingredient & quantity'); return; }
+  const existing = tempIngredients.findIndex(i => i.itemId === itemId);
+  if (existing >= 0) {
+    tempIngredients[existing].qty = qty;
+    tempIngredients[existing].unit = unit;
+  } else {
+    tempIngredients.push({ id: uid(), itemId, qty, unit });
+  }
+  document.getElementById('ing-item-select').value = '';
+  document.getElementById('ing-qty').value = '';
+  renderTempIngredients();
+}
+
+function removeTempIngredient(ingId) {
+  tempIngredients = tempIngredients.filter(i => i.id !== ingId);
+  renderTempIngredients();
+}
+
+function renderTempIngredients() {
+  const el = document.getElementById('recipe-ingredients-list');
+  let total = 0;
+  let html = '';
+  tempIngredients.forEach(ing => {
+    const item = db.items.find(i => i.id === ing.itemId);
+    if (!item) return;
+    const cost = ingredientCost(item, ing.qty, ing.unit);
+    total += cost;
+    html += `<div class="ingredient-row">
+      <div class="ingredient-info">
+        <div class="ingredient-name">${item.name}</div>
+        <div class="ingredient-qty">${ing.qty} ${ing.unit}</div>
+      </div>
+      <div class="ingredient-cost">${fmtPrice(cost)}</div>
+      <button class="ingredient-del" onclick="removeTempIngredient('${ing.id}')">✕</button>
+    </div>`;
+  });
+  if (!tempIngredients.length) {
+    html = `<div style="text-align:center;padding:16px;font-size:12px;color:var(--text-muted);font-style:italic">No ingredients added yet</div>`;
+  }
+  el.innerHTML = html;
+  document.getElementById('recipe-total-cost').innerHTML = `${fmtPrice(total)}<span>est.</span>`;
+}
+
+function saveRecipe() {
+  const name = document.getElementById('recipe-name').value.trim();
+  const qty = parseFloat(document.getElementById('recipe-qty').value);
+  const unit = document.getElementById('recipe-unit').value;
+  if (!name || !qty) { showToast('Please fill recipe name & quantity'); return; }
+  if (editingRecipeId) {
+    const r = db.recipes.find(r => r.id === editingRecipeId);
+    r.name = name; r.qty = qty; r.unit = unit;
+    r.ingredients = [...tempIngredients];
+    r.updatedAt = new Date().toISOString();
+  } else {
+    db.recipes.push({ id: uid(), name, qty, unit, ingredients: [...tempIngredients], updatedAt: new Date().toISOString() });
+  }
+  saveData(db);
+  closeModal('recipe-modal');
+  renderRecipesGrid();
+  refreshHome();
+  showToast(editingRecipeId ? 'Recipe updated' : 'Recipe saved ✓');
+  editingRecipeId = null;
+}
+
+function viewRecipe(id) {
+  const r = db.recipes.find(r => r.id === id);
+  if (!r) return;
+  editingRecipeId = id;
+  document.getElementById('recipe-view-title').textContent = r.name;
+  document.getElementById('recipe-view-updated').textContent = 'Last updated: ' + fmtDate(r.updatedAt);
+  const cost = recalcRecipeCost(r);
+  document.getElementById('recipe-view-details').innerHTML = `
+    <div class="detail-row"><span class="detail-key">Name</span><span class="detail-val">${r.name}</span></div>
+    <div class="detail-row"><span class="detail-key">Makes</span><span class="detail-val">${r.qty} ${r.unit}</span></div>
+    <div class="detail-row"><span class="detail-key">Ingredients</span><span class="detail-val">${(r.ingredients||[]).length}</span></div>
+  `;
+  let ingHtml = '';
+  (r.ingredients||[]).forEach(ing => {
+    const item = db.items.find(i => i.id === ing.itemId);
+    if (!item) return;
+    const c = ingredientCost(item, ing.qty, ing.unit);
+    ingHtml += `<div class="ingredient-row">
+      <div class="ingredient-info">
+        <div class="ingredient-name">${item.name}</div>
+        <div class="ingredient-qty">${ing.qty} ${ing.unit}</div>
+      </div>
+      <div class="ingredient-cost">${fmtPrice(c)}</div>
+    </div>`;
+  });
+  if (!ingHtml) ingHtml = '<div style="color:var(--text-muted);font-size:12px;text-align:center;padding:12px;font-style:italic">No ingredients</div>';
+  document.getElementById('recipe-view-ingredients').innerHTML = ingHtml;
+  document.getElementById('recipe-view-cost').textContent = fmtPrice(cost);
+  openModal('recipe-view-modal');
+}
+
+function editCurrentRecipe() {
+  const r = db.recipes.find(r => r.id === editingRecipeId);
+  if (!r) return;
+  closeModal('recipe-view-modal');
+  tempIngredients = JSON.parse(JSON.stringify(r.ingredients || []));
+  document.getElementById('recipe-modal-title').innerHTML = 'Edit <em>Recipe</em>';
+  document.getElementById('recipe-name').value = r.name;
+  document.getElementById('recipe-qty').value = r.qty;
+  document.getElementById('recipe-unit').value = r.unit;
+  document.getElementById('recipe-delete-btn').style.display = '';
+  document.getElementById('recipe-edit-cancel').style.display = '';
+  populateIngredientDropdown();
+  renderTempIngredients();
+  openModal('recipe-modal');
+}
+
+function deleteCurrentRecipe() {
+  if (!editingRecipeId) return;
+  if (!confirm('Delete this recipe?')) return;
+  db.recipes = db.recipes.filter(r => r.id !== editingRecipeId);
+  saveData(db);
+  closeModal('recipe-modal');
+  renderRecipesGrid();
+  refreshHome();
+  showToast('Recipe deleted');
+  editingRecipeId = null;
+}
+
+function deleteCurrentRecipeFromView() {
+  if (!editingRecipeId) return;
+  if (!confirm('Delete this recipe?')) return;
+  db.recipes = db.recipes.filter(r => r.id !== editingRecipeId);
+  saveData(db);
+  closeModal('recipe-view-modal');
+  renderRecipesGrid();
+  refreshHome();
+  showToast('Recipe deleted');
+  editingRecipeId = null;
+}
+
+// ═══════════════════════════════════════════════
+// SYNC — Manual backup
+// ═══════════════════════════════════════════════
+function showSyncStatus(msg, type) {
+  const el = document.getElementById('sync-status-msg');
+  el.textContent = msg;
+  el.className = 'sync-status ' + type;
+  el.style.display = '';
+}
+
+function syncAction(type) {
+  if (type === 'export') {
+    const json = JSON.stringify(db, null, 2);
+    const blob = new Blob([json], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'bakery-data.json'; a.click();
+    URL.revokeObjectURL(url);
+    showSyncStatus('✓ Downloaded — share via Files app to iCloud or Google Drive.', 'success');
+  } else if (type === 'import') {
+    document.getElementById('import-file-input').click();
+  }
+}
+
+function importFromFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const parsed = JSON.parse(ev.target.result);
+      if (!Array.isArray(parsed.items) || !Array.isArray(parsed.recipes)) throw new Error('bad');
+      db = parsed; saveData(db); refreshHome();
+      showSyncStatus('✓ Data imported successfully!', 'success');
+      showToast('Data imported ✓');
+    } catch(err) {
+      showSyncStatus('✗ Invalid file. Use a bakery-data.json export.', 'error');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ═══════════════════════════════════════════════
+// GOOGLE DRIVE SYNC
+// Uses Google Identity Services (OAuth 2.0 implicit flow)
+// File: "bakery-data.json" in Drive root (appDataFolder not used
+//        so user can see the file in their Drive)
+// ═══════════════════════════════════════════════
+const GD_CLIENT_ID_KEY = 'atelier_gdrive_client_id';
+const GD_TOKEN_KEY     = 'atelier_gdrive_token';
+const GD_LASTSYNC_KEY  = 'atelier_gdrive_lastsync';
+const GD_FILE_NAME     = 'bakery-data.json';
+const GD_SCOPE         = 'https://www.googleapis.com/auth/drive.file';
+
+let gdToken = null;   // { access_token, expires_at }
+
+function gdGetClientId() { return localStorage.getItem(GD_CLIENT_ID_KEY) || ''; }
+
+function saveClientId() {
+  const val = document.getElementById('gdrive-client-id-input').value.trim();
+  if (!val || !val.includes('.apps.googleusercontent.com')) {
+    showSyncStatus('✗ Paste a valid Client ID ending in .apps.googleusercontent.com', 'error');
+    return;
+  }
+  localStorage.setItem(GD_CLIENT_ID_KEY, val);
+  gdToken = null;
+  renderSyncPanel();
+  showSyncStatus('Client ID saved. Now sign in with Google.', 'info');
+}
+
+function resetClientId() {
+  localStorage.removeItem(GD_CLIENT_ID_KEY);
+  localStorage.removeItem(GD_TOKEN_KEY);
+  gdToken = null;
+  renderSyncPanel();
+}
+
+function gdLoadToken() {
+  try {
+    const raw = localStorage.getItem(GD_TOKEN_KEY);
+    if (!raw) return null;
+    const t = JSON.parse(raw);
+    if (Date.now() > t.expires_at) { localStorage.removeItem(GD_TOKEN_KEY); return null; }
+    return t;
+  } catch(e) { return null; }
+}
+
+function gdSaveToken(t) {
+  localStorage.setItem(GD_TOKEN_KEY, JSON.stringify(t));
+}
+
+function renderSyncPanel() {
+  const clientId = gdGetClientId();
+  gdToken = gdLoadToken();
+  document.getElementById('gdrive-setup-panel').style.display    = (!clientId) ? '' : 'none';
+  document.getElementById('gdrive-signin-panel').style.display   = (clientId && !gdToken) ? '' : 'none';
+  document.getElementById('gdrive-connected-panel').style.display = (clientId && gdToken) ? '' : 'none';
+
+  if (clientId && gdToken) {
+    document.getElementById('gdrive-user-name').textContent = gdToken.name || 'Google Account';
+    document.getElementById('gdrive-user-email').textContent = gdToken.email || '';
+    const last = localStorage.getItem(GD_LASTSYNC_KEY);
+    document.getElementById('gdrive-last-sync').textContent = last ? 'Last synced: ' + last : 'Not synced yet on this device';
+  }
+}
+
+function openSyncModal() {
+  document.getElementById('sync-status-msg').style.display = 'none';
+  // Pre-fill saved client ID
+  const saved = gdGetClientId();
+  if (saved) document.getElementById('gdrive-client-id-input').value = saved;
+  renderSyncPanel();
+  // Load Google Identity Services script if not yet loaded
+  if (!window.google && gdGetClientId()) { loadGISScript(); }
+  openModal('sync-modal');
+}
+
+function loadGISScript() {
+  if (document.getElementById('gis-script')) return;
+  const s = document.createElement('script');
+  s.id = 'gis-script';
+  s.src = 'https://accounts.google.com/gsi/client';
+  s.async = true; s.defer = true;
+  document.head.appendChild(s);
+}
+
+function gdriveSignIn() {
+  const clientId = gdGetClientId();
+  if (!clientId) { showSyncStatus('Save your Client ID first.', 'error'); return; }
+  loadGISScript();
+  // Poll until GIS loaded then request token
+  const attempt = (tries) => {
+    if (tries <= 0) { showSyncStatus('Google script failed to load. Check your connection.', 'error'); return; }
+    if (!window.google || !window.google.accounts) { setTimeout(() => attempt(tries-1), 400); return; }
+    window.google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: GD_SCOPE + ' https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+      callback: async (resp) => {
+        if (resp.error) { showSyncStatus('✗ Sign-in failed: ' + resp.error, 'error'); return; }
+        // Fetch user info
+        let name = '', email = '';
+        try {
+          const ui = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: 'Bearer ' + resp.access_token }
+          });
+          const ud = await ui.json();
+          name = ud.name || ''; email = ud.email || '';
+        } catch(e) {}
+        const token = {
+          access_token: resp.access_token,
+          expires_at: Date.now() + (resp.expires_in || 3600) * 1000,
+          name, email
+        };
+        gdToken = token;
+        gdSaveToken(token);
+        renderSyncPanel();
+        showSyncStatus('✓ Signed in as ' + (email||name), 'success');
+      }
+    }).requestAccessToken();
+  };
+  attempt(15);
+}
+
+function gdriveSignOut() {
+  const clientId = gdGetClientId();
+  if (window.google && window.google.accounts && gdToken) {
+    try { window.google.accounts.oauth2.revoke(gdToken.access_token); } catch(e) {}
+  }
+  localStorage.removeItem(GD_TOKEN_KEY);
+  gdToken = null;
+  renderSyncPanel();
+  showSyncStatus('Signed out from Google Drive.', 'info');
+}
+
+function setBtnState(id, state, label) {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+  btn.className = 'gdrive-action-btn' + (state ? ' ' + state : '');
+  if (label !== undefined) {
+    const lines = label.split('|');
+    const titleEl = btn.querySelectorAll('div')[1];
+    const descEl  = btn.querySelectorAll('div')[2];
+    if (titleEl && lines[0]) titleEl.textContent = lines[0];
+    if (descEl  && lines[1]) descEl.innerHTML    = lines[1];
+  }
+}
+
+// Find file ID of bakery-data.json in Drive
+async function gdFindFile(token) {
+  const q = encodeURIComponent(`name='${GD_FILE_NAME}' and trashed=false`);
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,modifiedTime)`, {
+    headers: { Authorization: 'Bearer ' + token }
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || 'Drive API error');
+  return (data.files && data.files.length) ? data.files[0] : null;
+}
+
+// Push current db to Drive
+async function gdrivePush() {
+  if (!gdToken || Date.now() > gdToken.expires_at) {
+    showSyncStatus('Session expired — please sign in again.', 'error');
+    gdriveSignOut(); return;
+  }
+  setBtnState('btn-push', 'loading', 'Pushing…|Uploading');
+  document.getElementById('sync-status-msg').style.display = 'none';
+  try {
+    const token = gdToken.access_token;
+    const json = JSON.stringify(db, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const existing = await gdFindFile(token);
+    let res;
+    if (existing) {
+      // Update existing file
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify({ name: GD_FILE_NAME })], { type: 'application/json' }));
+      form.append('file', blob);
+      res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${existing.id}?uploadType=multipart`, {
+        method: 'PATCH',
+        headers: { Authorization: 'Bearer ' + token },
+        body: form
+      });
+    } else {
+      // Create new file
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify({ name: GD_FILE_NAME, mimeType: 'application/json' })], { type: 'application/json' }));
+      form.append('file', blob);
+      res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token },
+        body: form
+      });
+    }
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'Upload failed'); }
+    const now = new Date().toLocaleString('en-IN', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+    localStorage.setItem(GD_LASTSYNC_KEY, now);
+    setBtnState('btn-push', 'success', 'Pushed ✓|Saved to Drive');
+    document.getElementById('gdrive-last-sync').textContent = 'Last synced: ' + now;
+    showSyncStatus('✓ Data pushed to Google Drive successfully!', 'success');
+    showToast('Pushed to Drive ✓');
+  } catch(err) {
+    setBtnState('btn-push', '', 'Push ↑|Save to Drive');
+    showSyncStatus('✗ Push failed: ' + err.message, 'error');
+  }
+  setTimeout(() => setBtnState('btn-push', '', 'Push ↑|Save to<br>Drive'), 3000);
+}
+
+// Pull from Drive into db
+async function gdrivePull() {
+  if (!gdToken || Date.now() > gdToken.expires_at) {
+    showSyncStatus('Session expired — please sign in again.', 'error');
+    gdriveSignOut(); return;
+  }
+  setBtnState('btn-pull', 'loading', 'Pulling…|Downloading');
+  document.getElementById('sync-status-msg').style.display = 'none';
+  try {
+    const token = gdToken.access_token;
+    const file = await gdFindFile(token);
+    if (!file) {
+      setBtnState('btn-pull', '', 'Pull ↓|Load from<br>Drive');
+      showSyncStatus('No bakery-data.json found in Drive. Push from another device first.', 'info');
+      return;
+    }
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    if (!res.ok) throw new Error('Download failed');
+    const parsed = await res.json();
+    if (!Array.isArray(parsed.items) || !Array.isArray(parsed.recipes)) throw new Error('Invalid data format');
+    db = parsed; saveData(db); refreshHome();
+    const now = new Date().toLocaleString('en-IN', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+    localStorage.setItem(GD_LASTSYNC_KEY, now);
+    setBtnState('btn-pull', 'success', 'Pulled ✓|Data loaded');
+    document.getElementById('gdrive-last-sync').textContent = 'Last synced: ' + now;
+    showSyncStatus('✓ Data pulled from Drive! ' + db.items.length + ' items, ' + db.recipes.length + ' recipes.', 'success');
+    showToast('Pulled from Drive ✓');
+  } catch(err) {
+    setBtnState('btn-pull', '', 'Pull ↓|Load from<br>Drive');
+    showSyncStatus('✗ Pull failed: ' + err.message, 'error');
+  }
+  setTimeout(() => setBtnState('btn-pull', '', 'Pull ↓|Load from<br>Drive'), 3000);
+}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+refreshHome();
+</script>
+</body>
+</html>
